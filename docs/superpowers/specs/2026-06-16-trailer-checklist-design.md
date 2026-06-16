@@ -139,7 +139,7 @@ One row per run. Item details serialized as JSON in the last column.
 
 ### Apps Script `doPost(e)`
 
-- Validates shared secret from the `X-Trailer-Secret` request header.
+- Validates shared `secret` field in the POST JSON body against a script property. (Apps Script `doPost(e)` does not expose request headers, so the secret travels in the body.)
 - Reads `run_id`; checks the most recent ~200 rows for that UUID; if found, returns `{ ok: true, dedup: true }` without writing.
 - Otherwise appends a row.
 - Responds with JSON: `{ ok: true, row: <rowNum> }` or `{ ok: false, error: "..." }`.
