@@ -1,1 +1,4 @@
+node_modules/
+dist/
 .superpowers/
+apps-script/.clasp.json

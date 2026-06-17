@@ -1,0 +1,19 @@
+:root {
+  --bg: #0f1020;
+  --surface: #1a1a2e;
+  --surface-2: #232348;
+  --border: #2a2a4a;
+  --text: #e8e8f0;
+  --muted: #8d8db0;
+  --accent: #8b8bd6;
+  --ok: #4ad295;
+  --warn: #e4b04a;
+  --err: #e36f6f;
+  --tap: 56px;
+  --radius: 12px;
+}
+* { box-sizing: border-box; }
+html, body, #app { height: 100%; }
+body { margin: 0; background: var(--bg); color: var(--text);
+  font: 16px/1.5 system-ui, sans-serif; -webkit-tap-highlight-color: transparent; }
+button { min-height: var(--tap); font: inherit; }
