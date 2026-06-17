@@ -7,6 +7,7 @@
   import { runQueue } from '$lib/sync/queue';
   import { showToast } from '$lib/stores/toast';
   import { online } from '$lib/stores/network';
+  import { requestBackgroundSync } from '$lib/sync/background';
 
   let notes = '';
   let submitting = false;
@@ -29,6 +30,7 @@
     });
     sessionStorage.removeItem('pending-run');
     await refreshPending();
+    await requestBackgroundSync();
 
     if ($online) {
       const summary = await runQueue();

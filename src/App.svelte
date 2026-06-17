@@ -20,6 +20,14 @@
   onMount(async () => {
     await loadSettings();
     await refreshPending();
+
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.addEventListener('message', (e) => {
+        if (e.data?.type === 'run-sync') {
+          runQueue().then(refreshPending);
+        }
+      });
+    }
   });
 
   let wasOnline = false;
