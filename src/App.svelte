@@ -5,6 +5,7 @@
   import { refreshPending } from '$lib/stores/pending';
   import { online } from '$lib/stores/network';
   import { runQueue } from '$lib/sync/queue';
+  import { seedIfEmpty } from '$lib/db/seed';
   import Toast from '$lib/components/Toast.svelte';
 
   import Home from '$screens/Home.svelte';
@@ -18,6 +19,7 @@
   import Settings from '$screens/Settings.svelte';
 
   onMount(async () => {
+    await seedIfEmpty();
     await loadSettings();
     await refreshPending();
 

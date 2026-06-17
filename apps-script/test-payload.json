@@ -1,0 +1,9 @@
+{
+  "secret": "REPLACE_WITH_YOUR_SECRET",
+  "run_id": "test-uuid-1",
+  "timestamp": "2026-06-16T14:00:00Z",
+  "user": "TestUser",
+  "checklist": "Test Checklist",
+  "notes": "smoke test",
+  "items_json": "[{\"t\":\"item1\",\"c\":true,\"n\":\"\"}]"
+}
