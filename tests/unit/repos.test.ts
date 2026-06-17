@@ -10,6 +10,10 @@ import {
   updateRunStatus,
   getSettings,
   saveSettings,
+  deleteChecklist,
+  deleteItem,
+  updateItem,
+  reorderItems,
 } from '$lib/db/repos';
 
 describe('db schema', () => {
@@ -95,5 +99,72 @@ describe('settings repo', () => {
     const s = await getSettings();
     expect(s.language).toBe('is');
     expect(s.users).toEqual(['Anna', 'Kári']);
+  });
+});
+
+describe('deleteChecklist', () => {
+  it('cascades delete to all items', async () => {
+    const cl = await createChecklist({ name_en: 'A', name_is: 'A' });
+    await addItem(cl.id, {
+      title_en: 'x', title_is: 'x',
+      instructions_en: '', instructions_is: '', media_ids: [],
+    });
+    await addItem(cl.id, {
+      title_en: 'y', title_is: 'y',
+      instructions_en: '', instructions_is: '', media_ids: [],
+    });
+    await deleteChecklist(cl.id);
+    expect(await listChecklists()).toHaveLength(0);
+    expect(await listItems(cl.id)).toHaveLength(0);
+  });
+});
+
+describe('deleteItem', () => {
+  it('removes item and updates checklist.item_order', async () => {
+    const cl = await createChecklist({ name_en: 'A', name_is: 'A' });
+    const a = await addItem(cl.id, {
+      title_en: 'a', title_is: 'a',
+      instructions_en: '', instructions_is: '', media_ids: [],
+    });
+    const b = await addItem(cl.id, {
+      title_en: 'b', title_is: 'b',
+      instructions_en: '', instructions_is: '', media_ids: [],
+    });
+    await deleteItem(a.id);
+    const items = await listItems(cl.id);
+    expect(items.map((i) => i.id)).toEqual([b.id]);
+    const lists = await listChecklists();
+    expect(lists[0].item_order).toEqual([b.id]);
+  });
+});
+
+describe('updateItem', () => {
+  it('persists title changes', async () => {
+    const cl = await createChecklist({ name_en: 'A', name_is: 'A' });
+    const it = await addItem(cl.id, {
+      title_en: 'Old', title_is: 'Gamalt',
+      instructions_en: '', instructions_is: '', media_ids: [],
+    });
+    await updateItem(it.id, { title_en: 'New' });
+    const items = await listItems(cl.id);
+    expect(items[0].title_en).toBe('New');
+    expect(items[0].title_is).toBe('Gamalt');
+  });
+});
+
+describe('reorderItems', () => {
+  it('changes item order', async () => {
+    const cl = await createChecklist({ name_en: 'A', name_is: 'A' });
+    const a = await addItem(cl.id, {
+      title_en: 'a', title_is: 'a',
+      instructions_en: '', instructions_is: '', media_ids: [],
+    });
+    const b = await addItem(cl.id, {
+      title_en: 'b', title_is: 'b',
+      instructions_en: '', instructions_is: '', media_ids: [],
+    });
+    await reorderItems(cl.id, [b.id, a.id]);
+    const items = await listItems(cl.id);
+    expect(items.map((i) => i.id)).toEqual([b.id, a.id]);
   });
 });
