@@ -4,5 +4,17 @@ import { afterEach } from 'vitest';
 
 afterEach(async () => {
   const dbs = await indexedDB.databases?.();
-  if (dbs) for (const db of dbs) if (db.name) indexedDB.deleteDatabase(db.name);
+  if (!dbs) return;
+  await Promise.all(
+    dbs.map((info) => {
+      if (!info.name) return Promise.resolve();
+      const name = info.name;
+      return new Promise<void>((resolve, reject) => {
+        const req = indexedDB.deleteDatabase(name);
+        req.onsuccess = () => resolve();
+        req.onerror = () => reject(req.error);
+        req.onblocked = () => resolve();
+      });
+    }),
+  );
 });
