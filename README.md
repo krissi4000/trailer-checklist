@@ -13,7 +13,7 @@ npm run build    # production build (writes dist/)
 
 ## Deploy
 
-- App: push to `main` — GitHub Action publishes to GitHub Pages.
+- App: push to `master` — GitHub Action publishes to GitHub Pages at https://krissi4000.github.io/trailer-checklist/.
 - Sheets endpoint: see `apps-script/README.md`.
 
 ## First-time tablet setup
