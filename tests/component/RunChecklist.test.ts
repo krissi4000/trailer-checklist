@@ -27,6 +27,35 @@ describe('RunChecklist', () => {
     expect((cbAfter as HTMLInputElement).checked).toBe(true);
   });
 
+  it('shows the item description inline after a | separator', async () => {
+    await db.open();
+    const cl = await createChecklist({ name_en: 'X', name_is: 'X' });
+    await addItem(cl.id, {
+      title_en: 'Water', title_is: 'Vatn',
+      instructions_en: 'Close the valve first', instructions_is: 'Lokaðu krananum', media_ids: [],
+    });
+    render(RunChecklist, { props: { checklistId: cl.id, user: 'A' } });
+    await screen.findByText('Water');
+    expect(screen.getByText(/\|\s*Close the valve first/)).toBeInTheDocument();
+  });
+
+  it('numbers the items in order', async () => {
+    await db.open();
+    const cl = await createChecklist({ name_en: 'X', name_is: 'X' });
+    await addItem(cl.id, {
+      title_en: 'First', title_is: 'Fyrsti',
+      instructions_en: '', instructions_is: '', media_ids: [],
+    });
+    await addItem(cl.id, {
+      title_en: 'Second', title_is: 'Annar',
+      instructions_en: '', instructions_is: '', media_ids: [],
+    });
+    render(RunChecklist, { props: { checklistId: cl.id, user: 'A' } });
+    await screen.findByText('First');
+    expect(screen.getByText('1.')).toBeInTheDocument();
+    expect(screen.getByText('2.')).toBeInTheDocument();
+  });
+
   it('enables submit when items exist', async () => {
     await db.open();
     const cl = await createChecklist({ name_en: 'X', name_is: 'X' });

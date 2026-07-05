@@ -6,6 +6,8 @@ export const en = {
   'home.online': 'Online',
   'pickUser.title': 'Who are you?',
   'pickUser.empty': 'No users configured. Add them in Settings.',
+  'pickUser.newGuest': 'New guest',
+  'pickUser.guestName': 'Name',
   'run.openInstructions': 'Open instructions',
   'run.submit': 'Submit',
   'item.note': 'Note for this item',

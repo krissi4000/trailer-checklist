@@ -36,6 +36,7 @@
     "workbox-window": "^7.4.1"
   },
   "dependencies": {
-    "dexie": "^4.4.4"
+    "dexie": "^4.4.4",
+    "svelte-dnd-action": "^0.9.70"
   }
 }

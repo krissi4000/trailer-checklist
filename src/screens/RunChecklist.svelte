@@ -63,9 +63,10 @@
 
 <main>
   <ul>
-    {#each items as it (it.id)}
+    {#each items as it, i (it.id)}
       <li>
         <label>
+          <span class="num">{i + 1}.</span>
           <input
             type="checkbox"
             aria-label={pickName(it.title_en, it.title_is)}
@@ -73,6 +74,9 @@
             on:change={() => toggleCheck(it.id)}
           />
           <span class="title">{pickName(it.title_en, it.title_is)}</span>
+          {#if pickName(it.instructions_en, it.instructions_is)}
+            <span class="desc">| {pickName(it.instructions_en, it.instructions_is)}</span>
+          {/if}
         </label>
         <button
           class="more"
@@ -97,7 +101,13 @@
   }
   label { display: flex; align-items: center; gap: 12px; flex: 1; }
   input[type="checkbox"] { width: 28px; height: 28px; }
-  .title { font-size: 17px; }
+  .num { color: var(--muted); font-size: 15px; min-width: 24px; text-align: right; }
+  .title { font-size: 17px; flex-shrink: 0; }
+  .desc {
+    color: var(--muted); font-style: italic; font-size: 14px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    flex: 1; min-width: 0;
+  }
   .more {
     background: var(--surface-2); color: var(--text);
     border: 1px solid var(--border); border-radius: 50%;

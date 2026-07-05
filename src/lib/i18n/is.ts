@@ -8,6 +8,8 @@ export const is: Record<Key, string> = {
   'home.online': 'Tengt',
   'pickUser.title': 'Hver ert þú?',
   'pickUser.empty': 'Engir notendur skráðir. Bættu þeim við í Stillingum.',
+  'pickUser.newGuest': 'Nýr gestur',
+  'pickUser.guestName': 'Nafn',
   'run.openInstructions': 'Opna leiðbeiningar',
   'run.submit': 'Senda',
   'item.note': 'Athugasemd',
