@@ -1,4 +1,5 @@
 :root {
+  color-scheme: dark;
   --bg: #0f1020;
   --surface: #1a1a2e;
   --surface-2: #232348;
@@ -11,6 +12,21 @@
   --err: #e36f6f;
   --tap: 56px;
   --radius: 12px;
+}
+@media (prefers-color-scheme: light) {
+  :root {
+    color-scheme: light;
+    --bg: #f2f2f7;
+    --surface: #ffffff;
+    --surface-2: #e7e7f2;
+    --border: #d3d3e4;
+    --text: #22223a;
+    --muted: #646482;
+    --accent: #5352b8;
+    --ok: #1d9d68;
+    --warn: #b07d17;
+    --err: #bb4444;
+  }
 }
 * { box-sizing: border-box; }
 html, body, #app { height: 100%; }
