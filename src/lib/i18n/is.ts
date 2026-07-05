@@ -36,6 +36,7 @@ export const is: Record<Key, string> = {
   'settings.language': 'Tungumál',
   'settings.endpoint': 'Slóð á Sheets',
   'settings.secret': 'Sameiginlegt leyniorð',
+  'settings.editChecklists': 'Breyta gátlistum',
   'settings.forceSync': 'Samstilla núna',
   'settings.queue': 'Bíða sendingar',
   'settings.storage': 'Notað geymslupláss',

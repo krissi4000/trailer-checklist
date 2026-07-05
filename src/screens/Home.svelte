@@ -84,5 +84,6 @@
     width: 56px; height: 56px; border-radius: 50%;
     background: var(--surface-2); color: var(--text);
     border: 1px solid var(--border); font-size: 24px;
+    user-select: none; -webkit-user-select: none; touch-action: manipulation;
   }
 </style>

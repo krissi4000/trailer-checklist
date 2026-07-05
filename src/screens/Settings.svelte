@@ -7,7 +7,7 @@
   import { runQueue } from '$lib/sync/queue';
   import { refreshPending } from '$lib/stores/pending';
   import { showToast } from '$lib/stores/toast';
-  import { back } from '$lib/stores/screen';
+  import { back, navigate } from '$lib/stores/screen';
   import type { Run } from '$lib/db/schema';
 
   let newUser = '';
@@ -55,6 +55,13 @@
 <Header title={$t('settings.title')} onBack={back} />
 
 <main>
+  <section>
+    <h3>{$t('edit.checklists')}</h3>
+    <button class="edit-lists" on:click={() => navigate({ name: 'editList' })}>
+      ✏️ {$t('settings.editChecklists')}
+    </button>
+  </section>
+
   <section>
     <h3>{$t('settings.users')}</h3>
     <ul>
@@ -118,6 +125,11 @@
   .save {
     margin-top: 10px; background: var(--accent); color: #fff;
     border: 0; border-radius: 10px; padding: 12px 20px;
+  }
+  .edit-lists {
+    width: 100%; background: var(--surface); color: var(--text);
+    border: 1px solid var(--border); border-radius: 10px; padding: 12px;
+    text-align: left;
   }
   .lang { display: flex; gap: 8px; }
   .lang button {

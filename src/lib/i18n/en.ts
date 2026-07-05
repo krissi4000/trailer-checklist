@@ -34,6 +34,7 @@ export const en = {
   'settings.language': 'Language',
   'settings.endpoint': 'Sheets endpoint URL',
   'settings.secret': 'Shared secret',
+  'settings.editChecklists': 'Edit checklists',
   'settings.forceSync': 'Force sync now',
   'settings.queue': 'Pending submissions',
   'settings.storage': 'Storage used',
