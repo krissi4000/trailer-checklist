@@ -1,10 +1,16 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import Header from '$lib/components/Header.svelte';
-  import { t } from '$lib/i18n/store';
+  import { t, language } from '$lib/i18n/store';
   import { listChecklists, createChecklist, deleteChecklist } from '$lib/db/repos';
   import type { Checklist } from '$lib/db/schema';
   import { navigate, back } from '$lib/stores/screen';
+
+  function pickName(cl: Checklist): string {
+    return $language === 'is'
+      ? (cl.name_is || cl.name_en)
+      : (cl.name_en || cl.name_is);
+  }
 
   let lists: Checklist[] = [];
 
@@ -30,7 +36,7 @@
     {#each lists as cl (cl.id)}
       <li>
         <button class="row" on:click={() => navigate({ name: 'editChecklist', checklistId: cl.id })}>
-          {cl.name_en || cl.name_is || '(no name)'}
+          {pickName(cl) || '(no name)'}
         </button>
         <button class="del" on:click={() => del(cl.id)} aria-label={$t('edit.delete')}>🗑</button>
       </li>
