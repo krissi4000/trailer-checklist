@@ -29,8 +29,20 @@
     return $language === 'is' ? (c.name_is || c.name_en) : (c.name_en || c.name_is);
   }
 
+  // After a long-press, the pointer release still fires a click; swallow it.
+  let suppressClick = false;
+
   function handleGearClick() {
+    if (suppressClick) {
+      suppressClick = false;
+      return;
+    }
     navigate({ name: 'settings' });
+  }
+
+  function handleGearLongpress() {
+    suppressClick = true;
+    navigate({ name: 'editList' });
   }
 </script>
 
@@ -53,6 +65,7 @@
     class="gear"
     aria-label="Edit"
     use:longpress={1500}
+    on:longpress={handleGearLongpress}
     on:click={handleGearClick}
   >⚙️</button>
 </main>
