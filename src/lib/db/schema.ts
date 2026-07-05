@@ -69,6 +69,7 @@ export interface Settings {
   shared_secret: string;
   device_name: string;
   info_entries: InfoEntry[];
+  lang_default_migrated: boolean;
 }
 
 export class TrailerDB extends Dexie {

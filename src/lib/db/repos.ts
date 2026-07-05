@@ -114,6 +114,7 @@ const DEFAULT_SETTINGS: Settings = {
   shared_secret: '',
   device_name: 'tablet',
   info_entries: [],
+  lang_default_migrated: false,
 };
 
 export async function getSettings(): Promise<Settings> {

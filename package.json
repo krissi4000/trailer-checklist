@@ -37,6 +37,7 @@
   },
   "dependencies": {
     "dexie": "^4.4.4",
-    "svelte-dnd-action": "^0.9.70"
+    "svelte-dnd-action": "^0.9.70",
+    "workbox-core": "^7.4.1"
   }
 }
