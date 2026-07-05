@@ -10,10 +10,10 @@ import { currentScreen, screenStack, reset } from '$lib/stores/screen';
 
 describe('Home', () => {
   beforeEach(async () => {
-    language.set('en');
     reset();
     await db.open();
     await loadSettings();
+    language.set('en');
   });
 
   it('shows empty state when no checklists', async () => {

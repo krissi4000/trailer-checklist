@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import Header from '$lib/components/Header.svelte';
-  import LangTabs from '$lib/components/LangTabs.svelte';
+  import LangField from '$lib/components/LangField.svelte';
   import { t } from '$lib/i18n/store';
   import {
     getChecklist, updateChecklist, listItems, addItem, deleteItem,
@@ -45,10 +45,10 @@
 
 <main>
   {#if cl}
-    <LangTabs
+    <LangField
       en={cl.name_en}
       is={cl.name_is}
-      label="Checklist name"
+      label={$t('edit.checklistName')}
       on:change={(e) => rename(e.detail)}
     />
 

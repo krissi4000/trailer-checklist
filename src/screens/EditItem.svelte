@@ -1,6 +1,6 @@
 <script lang="ts">
   import Header from '$lib/components/Header.svelte';
-  import LangTabs from '$lib/components/LangTabs.svelte';
+  import LangField from '$lib/components/LangField.svelte';
   import MediaUploader from '$lib/components/MediaUploader.svelte';
   import { t } from '$lib/i18n/store';
   import { db } from '$lib/db/schema';
@@ -42,10 +42,10 @@
 
 <main>
   {#if it}
-    <LangTabs en={it.title_en} is={it.title_is}
-      label={$t('editItem.title.en')} on:change={(e) => onTitle(e.detail)} />
-    <LangTabs en={it.instructions_en} is={it.instructions_is}
-      label={$t('editItem.instructions.en')} multiline
+    <LangField en={it.title_en} is={it.title_is}
+      label={$t('editItem.title')} on:change={(e) => onTitle(e.detail)} />
+    <LangField en={it.instructions_en} is={it.instructions_is}
+      label={$t('editItem.instructions')} multiline
       on:change={(e) => onInstr(e.detail)} />
 
     <h3>{$t('editItem.media')}</h3>

@@ -109,7 +109,7 @@ export async function listRuns(): Promise<Run[]> {
 const DEFAULT_SETTINGS: Settings = {
   id: 'singleton',
   users: [],
-  language: 'en',
+  language: 'is',
   endpoint_url: '',
   shared_secret: '',
   device_name: 'tablet',

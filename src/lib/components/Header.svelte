@@ -1,12 +1,17 @@
 <script lang="ts">
   import { language } from '$lib/i18n/store';
+  import { updateSettings } from '$lib/stores/settings';
 
   export let title: string;
   export let pending: number = 0;
   export let online: boolean = true;
   export let onBack: (() => void) | null = null;
 
-  function setLang(l: 'en' | 'is') { language.set(l); }
+  function setLang(l: 'en' | 'is') {
+    language.set(l);
+    // Persist so navigation (loadSettings on other screens) can't revert it.
+    void updateSettings({ language: l });
+  }
 </script>
 
 <header>

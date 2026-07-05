@@ -3,10 +3,12 @@ import { render, fireEvent } from '@testing-library/svelte';
 import EditItem from '$screens/EditItem.svelte';
 import { createChecklist, addItem, listItems } from '$lib/db/repos';
 import { db } from '$lib/db/schema';
+import { language } from '$lib/i18n/store';
 
 describe('EditItem', () => {
   beforeEach(async () => {
     await db.open();
+    language.set('en');
   });
 
   it('persists title edits on input', async () => {

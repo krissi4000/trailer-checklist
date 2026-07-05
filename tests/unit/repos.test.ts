@@ -90,7 +90,7 @@ describe('settings repo', () => {
   it('returns defaults when no settings exist', async () => {
     const s = await getSettings();
     expect(s.id).toBe('singleton');
-    expect(s.language).toBe('en');
+    expect(s.language).toBe('is');
     expect(s.users).toEqual([]);
   });
 

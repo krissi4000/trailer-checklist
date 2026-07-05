@@ -9,10 +9,10 @@ import { currentScreen, reset } from '$lib/stores/screen';
 
 describe('Settings', () => {
   beforeEach(async () => {
-    language.set('en');
     reset();
     await db.open();
     await loadSettings();
+    language.set('en');
   });
 
   it('has an edit checklists button that opens the checklist editor', async () => {
