@@ -4,6 +4,7 @@
   import { getChecklist, listItems } from '$lib/db/repos';
   import type { Checklist, Item } from '$lib/db/schema';
   import { navigate, back } from '$lib/stores/screen';
+  import { settings } from '$lib/stores/settings';
 
   export let checklistId: string;
   export let user: string;
@@ -87,6 +88,20 @@
     {/each}
   </ul>
 
+  {#if ($settings?.info_entries ?? []).length > 0}
+    <section class="info">
+      <h3>{$t('run.info')}</h3>
+      <dl>
+        {#each $settings?.info_entries ?? [] as entry (entry.id)}
+          <div class="info-row">
+            <dt>{pickName(entry.label_en, entry.label_is)}</dt>
+            <dd>{entry.value}</dd>
+          </div>
+        {/each}
+      </dl>
+    </section>
+  {/if}
+
   <button class="submit" on:click={submit} disabled={items.length === 0}>
     {$t('run.submit')}
   </button>
@@ -113,6 +128,18 @@
     border: 1px solid var(--border); border-radius: 50%;
     width: 40px; height: 40px; min-height: auto; font-size: 18px;
   }
+  .info { margin-top: 24px; }
+  .info h3 {
+    font-size: 13px; color: var(--muted); margin: 0 0 8px;
+    text-transform: uppercase; letter-spacing: 0.08em;
+  }
+  .info dl { margin: 0; }
+  .info-row {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+    padding: 10px 12px; border-bottom: 1px solid var(--border);
+  }
+  .info dt { color: var(--muted); }
+  .info dd { margin: 0; }
   .submit {
     position: fixed; bottom: 16px; left: 16px; right: 16px;
     background: var(--accent); color: #fff;

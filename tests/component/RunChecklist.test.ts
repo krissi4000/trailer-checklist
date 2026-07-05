@@ -1,7 +1,8 @@
 import { describe, expect, it, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/svelte';
 import RunChecklist from '$screens/RunChecklist.svelte';
-import { createChecklist, addItem } from '$lib/db/repos';
+import { createChecklist, addItem, saveSettings } from '$lib/db/repos';
+import { loadSettings } from '$lib/stores/settings';
 import { language } from '$lib/i18n/store';
 import { db } from '$lib/db/schema';
 
@@ -54,6 +55,28 @@ describe('RunChecklist', () => {
     await screen.findByText('First');
     expect(screen.getByText('1.')).toBeInTheDocument();
     expect(screen.getByText('2.')).toBeInTheDocument();
+  });
+
+  it('shows the info list below the checklist', async () => {
+    await db.open();
+    await saveSettings({
+      info_entries: [
+        { id: 'i1', label_en: 'WiFi password', label_is: 'WiFi lykilorð', value: 'hunter2' },
+        { id: 'i2', label_en: 'Opening hours', label_is: 'Opnunartími', value: '9–17' },
+      ],
+    });
+    await loadSettings();
+    language.set('is');
+    const cl = await createChecklist({ name_en: 'X', name_is: 'X' });
+    await addItem(cl.id, {
+      title_en: 'a', title_is: 'a',
+      instructions_en: '', instructions_is: '', media_ids: [],
+    });
+    render(RunChecklist, { props: { checklistId: cl.id, user: 'A' } });
+    await screen.findByText('WiFi lykilorð');
+    expect(screen.getByText('hunter2')).toBeInTheDocument();
+    expect(screen.getByText('Opnunartími')).toBeInTheDocument();
+    expect(screen.getByText('9–17')).toBeInTheDocument();
   });
 
   it('enables submit when items exist', async () => {

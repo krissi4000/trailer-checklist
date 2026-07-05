@@ -100,6 +100,26 @@ describe('settings repo', () => {
     expect(s.language).toBe('is');
     expect(s.users).toEqual(['Anna', 'Kári']);
   });
+
+  it('defaults info_entries to an empty array, also for legacy records', async () => {
+    const fresh = await getSettings();
+    expect(fresh.info_entries).toEqual([]);
+
+    // Simulate a settings record saved before info_entries existed.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await db.settings.put({ id: 'singleton', users: [], language: 'is' } as any);
+    const legacy = await getSettings();
+    expect(legacy.info_entries).toEqual([]);
+  });
+
+  it('persists info entries', async () => {
+    await saveSettings({
+      info_entries: [{ id: 'i1', label_en: 'WiFi password', label_is: 'WiFi lykilorð', value: 'hunter2' }],
+    });
+    const s = await getSettings();
+    expect(s.info_entries).toHaveLength(1);
+    expect(s.info_entries[0].value).toBe('hunter2');
+  });
 });
 
 describe('deleteChecklist', () => {

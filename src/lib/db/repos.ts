@@ -113,11 +113,13 @@ const DEFAULT_SETTINGS: Settings = {
   endpoint_url: '',
   shared_secret: '',
   device_name: 'tablet',
+  info_entries: [],
 };
 
 export async function getSettings(): Promise<Settings> {
   const s = await db.settings.get('singleton');
-  return s ?? DEFAULT_SETTINGS;
+  // Merge so records saved before newer fields existed get their defaults.
+  return { ...DEFAULT_SETTINGS, ...s };
 }
 
 export async function saveSettings(patch: Partial<Omit<Settings, 'id'>>): Promise<Settings> {

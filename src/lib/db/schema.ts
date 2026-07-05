@@ -54,6 +54,13 @@ export interface Run {
   attempt_count: number;
 }
 
+export interface InfoEntry {
+  id: string;
+  label_en: string;
+  label_is: string;
+  value: string;
+}
+
 export interface Settings {
   id: 'singleton';
   users: string[];
@@ -61,6 +68,7 @@ export interface Settings {
   endpoint_url: string;
   shared_secret: string;
   device_name: string;
+  info_entries: InfoEntry[];
 }
 
 export class TrailerDB extends Dexie {
