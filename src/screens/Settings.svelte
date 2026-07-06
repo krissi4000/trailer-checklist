@@ -3,7 +3,9 @@
   import Header from '$lib/components/Header.svelte';
   import { t } from '$lib/i18n/store';
   import { settings, updateSettings, loadSettings } from '$lib/stores/settings';
-  import { pendingRuns } from '$lib/db/repos';
+  import { pendingRuns, getSyncState } from '$lib/db/repos';
+  import { syncContent } from '$lib/sync/content-sync';
+  import { syncStatus } from '$lib/stores/syncStatus';
   import { runQueue } from '$lib/sync/queue';
   import { refreshPending } from '$lib/stores/pending';
   import { showToast } from '$lib/stores/toast';
@@ -28,6 +30,16 @@
       const est = await navigator.storage.estimate();
       storageMB = Math.round(((est.usage ?? 0) / 1024 / 1024) * 10) / 10;
     }
+    const st = await getSyncState();
+    syncStatus.update((cur) =>
+      cur.state === 'syncing'
+        ? cur
+        : {
+            state: st.last_error ? 'error' : 'idle',
+            lastSyncedAt: st.last_synced_at,
+            error: st.last_error,
+          },
+    );
   });
 
   async function addUser() {
@@ -114,6 +126,22 @@
     <h3>{$t('settings.secret')}</h3>
     <input bind:value={secret} type="password" />
     <button class="save" on:click={saveEndpoint}>{$t('common.save')}</button>
+  </section>
+
+  <section>
+    <h3>{$t('settings.contentSync')}</h3>
+    <p class="muted">
+      {#if $syncStatus.state === 'syncing'}
+        {$t('sync.syncing')}
+      {:else if $syncStatus.state === 'error'}
+        ⚠ {$syncStatus.error}
+      {:else if $syncStatus.lastSyncedAt}
+        {$t('sync.lastSynced')}: {new Date($syncStatus.lastSyncedAt).toLocaleString()}
+      {:else}
+        {$t('sync.never')}
+      {/if}
+    </p>
+    <button on:click={() => void syncContent()}>{$t('settings.syncNow')}</button>
   </section>
 
   <section>

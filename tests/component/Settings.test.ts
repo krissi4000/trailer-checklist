@@ -7,6 +7,12 @@ import { loadSettings } from '$lib/stores/settings';
 import { getSettings, saveSettings } from '$lib/db/repos';
 import { db } from '$lib/db/schema';
 import { currentScreen, reset } from '$lib/stores/screen';
+import { syncContent } from '$lib/sync/content-sync';
+
+vi.mock('$lib/sync/content-sync', () => ({
+  syncContent: vi.fn().mockResolvedValue(undefined),
+  scheduleSync: vi.fn(),
+}));
 
 describe('Settings', () => {
   beforeEach(async () => {
@@ -41,5 +47,15 @@ describe('Settings', () => {
     await vi.waitFor(async () => {
       expect((await getSettings()).info_entries[0].value).toBe('new-pass');
     });
+  });
+
+  it('shows the sync section and triggers a sync on demand', async () => {
+    // Pin language before render so onMount's loadSettings keeps it.
+    await saveSettings({ language: 'en', lang_default_migrated: true });
+    render(Settings);
+    const btn = await screen.findByText('Sync now');
+    expect(screen.getByText('Not synced yet')).toBeInTheDocument();
+    await fireEvent.click(btn);
+    expect(syncContent).toHaveBeenCalled();
   });
 });
