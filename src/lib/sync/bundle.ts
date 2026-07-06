@@ -57,6 +57,37 @@ export function referencedMediaIds(bundle: ContentBundle): string[] {
   return [...ids];
 }
 
+const TOMBSTONE_TTL_MS = 90 * 24 * 60 * 60 * 1000;
+
+export function mergeBundles(local: ContentBundle, remote: ContentBundle, now: string): ContentBundle {
+  // Tombstones: union by id keeping the newest deletion, pruned after 90 days.
+  const tombs = new Map<string, BundleTombstone>();
+  for (const t of [...local.tombstones, ...remote.tombstones]) {
+    const prev = tombs.get(t.id);
+    if (!prev || t.deleted_at > prev.deleted_at) tombs.set(t.id, t);
+  }
+  const cutoff = new Date(new Date(now).getTime() - TOMBSTONE_TTL_MS).toISOString();
+  for (const [id, t] of [...tombs]) if (t.deleted_at < cutoff) tombs.delete(id);
+
+  const localById = new Map(local.checklists.map((c) => [c.id, c]));
+  const remoteById = new Map(remote.checklists.map((c) => [c.id, c]));
+
+  const merged: BundleChecklist[] = [];
+  for (const id of new Set([...localById.keys(), ...remoteById.keys()])) {
+    const l = localById.get(id);
+    const r = remoteById.get(id);
+    const winner = !l ? r! : !r ? l : l.updated_at >= r.updated_at ? l : r;
+    const tomb = tombs.get(id);
+    if (tomb && tomb.deleted_at > winner.updated_at) continue; // deletion wins over older edits
+    if (tomb) tombs.delete(id); // edit is newer than the deletion: resurrect
+    merged.push(winner);
+  }
+
+  const shared = local.shared.updated_at >= remote.shared.updated_at ? local.shared : remote.shared;
+
+  return { schema: 1, checklists: merged, tombstones: [...tombs.values()], shared };
+}
+
 export function bundlesEqual(a: ContentBundle, b: ContentBundle): boolean {
   return JSON.stringify(normalize(a)) === JSON.stringify(normalize(b));
 }

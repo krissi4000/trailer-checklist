@@ -1,23 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import {
-  emptyBundle, referencedMediaIds, bundlesEqual,
-  type ContentBundle, type BundleChecklist,
-} from '$lib/sync/bundle';
-
-export function mkChecklist(
-  id: string, name: string, updated_at: string,
-  extra: Partial<BundleChecklist> = {},
-): BundleChecklist {
-  return {
-    id, name_en: name, name_is: `${name}-is`,
-    item_order: [], created_at: '2026-01-01T00:00:00.000Z', updated_at,
-    items: [], ...extra,
-  };
-}
-
-export function mkBundle(checklists: BundleChecklist[], extra: Partial<ContentBundle> = {}): ContentBundle {
-  return { ...emptyBundle(), checklists, ...extra };
-}
+import { emptyBundle, referencedMediaIds, bundlesEqual } from '$lib/sync/bundle';
+import { mkChecklist, mkBundle } from './bundle-fixtures';
 
 describe('bundle helpers', () => {
   it('emptyBundle has no content and the oldest possible shared stamp', () => {
