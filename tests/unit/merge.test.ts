@@ -57,6 +57,34 @@ describe('mergeBundles: tombstones', () => {
   });
 });
 
+describe('mergeBundles: cross-device seed dedupe', () => {
+  const name = { name_en: 'Leaving', name_is: 'Brottför' };
+
+  it('collapses same-named checklists that exist under different ids on opposite sides', () => {
+    const local = mkBundle([mkChecklist('local-1', 'x', '2026-06-01T00:00:00Z', name)]);
+    const remote = mkBundle([mkChecklist('remote-1', 'x', '2026-05-01T00:00:00Z', name)]);
+    const m = mergeBundles(local, remote, NOW);
+    expect(m.checklists.map((c) => c.id)).toEqual(['local-1']); // newer copy survives
+    expect(m.tombstones.map((t) => t.id)).toEqual(['remote-1']); // loser is tombstoned
+  });
+
+  it('does NOT collapse same-named checklists that both live on one side', () => {
+    const local = mkBundle([
+      mkChecklist('a', 'x', '2026-05-01T00:00:00Z', name),
+      mkChecklist('b', 'x', '2026-06-01T00:00:00Z', name),
+    ]);
+    const m = mergeBundles(local, emptyBundle(), NOW);
+    expect(m.checklists.map((c) => c.id).sort()).toEqual(['a', 'b']);
+  });
+
+  it('does NOT collapse differently-named checklists', () => {
+    const local = mkBundle([mkChecklist('a', 'A', '2026-05-01T00:00:00Z')]);
+    const remote = mkBundle([mkChecklist('b', 'B', '2026-05-01T00:00:00Z')]);
+    const m = mergeBundles(local, remote, NOW);
+    expect(m.checklists.length).toBe(2);
+  });
+});
+
 describe('mergeBundles: shared unit', () => {
   it('newer shared stamp wins wholesale', () => {
     const local = mkBundle([], { shared: { users: ['Anna'], info_entries: [], updated_at: '2026-02-01T00:00:00Z' } });
