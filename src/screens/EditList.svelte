@@ -5,6 +5,7 @@
   import { listChecklists, createChecklist, deleteChecklist } from '$lib/db/repos';
   import type { Checklist } from '$lib/db/schema';
   import { navigate, back } from '$lib/stores/screen';
+  import { contentVersion } from '$lib/stores/syncStatus';
 
   function pickName(cl: Checklist): string {
     return $language === 'is'
@@ -16,6 +17,13 @@
 
   async function refresh() { lists = await listChecklists(); }
   onMount(refresh);
+
+  // Re-query when a background sync applied remote changes.
+  let lastSeenVersion = 0;
+  $: if ($contentVersion !== lastSeenVersion) {
+    lastSeenVersion = $contentVersion;
+    refresh();
+  }
 
   async function add() {
     const cl = await createChecklist({ name_en: 'New checklist', name_is: 'Nýr gátlisti' });

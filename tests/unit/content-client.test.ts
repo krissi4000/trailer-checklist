@@ -14,7 +14,9 @@ function stubFetch(body: unknown, status = 200) {
   return fn;
 }
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 describe('content-client request shape', () => {
   it('POSTs text/plain with secret and action', async () => {

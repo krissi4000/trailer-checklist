@@ -7,6 +7,7 @@
   import { navigate } from '$lib/stores/screen';
   import { pending, refreshPending } from '$lib/stores/pending';
   import { online } from '$lib/stores/network';
+  import { contentVersion } from '$lib/stores/syncStatus';
   import { longpress } from '$lib/utils/longpress';
 
   let lists: Checklist[] = [];
@@ -22,6 +23,13 @@
 
   $: if (!initialized) {
     initialized = true;
+    refresh();
+  }
+
+  // Re-query when a background sync applied remote changes.
+  let lastSeenVersion = 0;
+  $: if ($contentVersion !== lastSeenVersion) {
+    lastSeenVersion = $contentVersion;
     refresh();
   }
 

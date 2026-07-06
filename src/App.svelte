@@ -5,6 +5,8 @@
   import { refreshPending } from '$lib/stores/pending';
   import { online } from '$lib/stores/network';
   import { runQueue } from '$lib/sync/queue';
+  import { syncContent, scheduleSync } from '$lib/sync/content-sync';
+  import { onContentChanged } from '$lib/sync/content-signal';
   import { seedIfEmpty } from '$lib/db/seed';
   import Toast from '$lib/components/Toast.svelte';
 
@@ -22,6 +24,8 @@
     await seedIfEmpty();
     await loadSettings();
     await refreshPending();
+    void syncContent();
+    onContentChanged(() => scheduleSync());
 
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.addEventListener('message', (e) => {
@@ -36,6 +40,7 @@
   $: if ($online && !wasOnline) {
     wasOnline = true;
     runQueue().then(refreshPending);
+    void syncContent();
   } else if (!$online) {
     wasOnline = false;
   }

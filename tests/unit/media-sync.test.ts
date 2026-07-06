@@ -12,7 +12,9 @@ vi.mock('$lib/sync/content-client', () => ({
 
 const URL_ = 'https://example.test/exec';
 
-beforeEach(() => vi.clearAllMocks());
+beforeEach(() => {
+  vi.clearAllMocks();
+});
 
 describe('diffMedia (pure)', () => {
   it('uploads local-not-server, downloads server-not-local, referenced only', () => {
@@ -26,7 +28,7 @@ describe('diffMedia (pure)', () => {
 describe('syncMedia', () => {
   async function putLocalMedia(id: string, bytes: Uint8Array) {
     await db.media.add({
-      id, type: 'photo', blob: new Blob([bytes], { type: 'image/jpeg' }),
+      id, type: 'photo', blob: new Blob([bytes.buffer as ArrayBuffer], { type: 'image/jpeg' }),
       thumbnail_blob: null, mime: 'image/jpeg', size_bytes: bytes.length,
       created_at: '2026-07-06T00:00:00Z',
     });
