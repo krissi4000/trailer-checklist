@@ -29,9 +29,10 @@ export async function updateChecklist(id: string, patch: Partial<Checklist>): Pr
 }
 
 export async function deleteChecklist(id: string): Promise<void> {
-  await db.transaction('rw', db.checklists, db.items, async () => {
+  await db.transaction('rw', db.checklists, db.items, db.tombstones, async () => {
     await db.items.where('checklist_id').equals(id).delete();
     await db.checklists.delete(id);
+    await db.tombstones.put({ id, deleted_at: now() });
   });
 }
 
@@ -61,7 +62,13 @@ export async function listItems(checklist_id: string): Promise<Item[]> {
 }
 
 export async function updateItem(id: string, patch: Partial<Item>): Promise<void> {
-  await db.items.update(id, patch);
+  await db.transaction('rw', db.items, db.checklists, async () => {
+    await db.items.update(id, patch);
+    const it = await db.items.get(id);
+    // Items merge as part of their checklist block, so any item edit must
+    // bump the block's timestamp or the edit loses last-write-wins.
+    if (it) await db.checklists.update(it.checklist_id, { updated_at: now() });
+  });
 }
 
 export async function deleteItem(id: string): Promise<void> {
@@ -127,6 +134,9 @@ export async function getSettings(): Promise<Settings> {
 export async function saveSettings(patch: Partial<Omit<Settings, 'id'>>): Promise<Settings> {
   const current = await getSettings();
   const merged: Settings = { ...current, ...patch, id: 'singleton' };
+  if ('users' in patch || 'info_entries' in patch) {
+    merged.shared_updated_at = now();
+  }
   await db.settings.put(merged);
   return merged;
 }

@@ -172,6 +172,46 @@ describe('updateItem', () => {
   });
 });
 
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+describe('sync bookkeeping', () => {
+  it('updateItem bumps the parent checklist updated_at', async () => {
+    const cl = await createChecklist({ name_en: 'A', name_is: 'A' });
+    const it = await addItem(cl.id, {
+      title_en: 'a', title_is: 'a',
+      instructions_en: '', instructions_is: '', media_ids: [],
+    });
+    const before = (await listChecklists())[0].updated_at;
+    await sleep(5);
+    await updateItem(it.id, { title_en: 'b' });
+    const after = (await listChecklists())[0].updated_at;
+    expect(after > before).toBe(true);
+  });
+
+  it('deleteChecklist writes a tombstone', async () => {
+    const cl = await createChecklist({ name_en: 'A', name_is: 'A' });
+    await deleteChecklist(cl.id);
+    const tomb = await db.tombstones.get(cl.id);
+    expect(tomb).toBeDefined();
+    expect(tomb!.deleted_at).toBeTruthy();
+  });
+
+  it('saveSettings stamps shared_updated_at for users and info_entries only', async () => {
+    await saveSettings({ language: 'en' });
+    expect((await getSettings()).shared_updated_at).toBe('');
+
+    await saveSettings({ users: ['Anna'] });
+    const afterUsers = (await getSettings()).shared_updated_at;
+    expect(afterUsers).not.toBe('');
+
+    await sleep(5);
+    await saveSettings({
+      info_entries: [{ id: 'i1', label_en: 'x', label_is: 'x', value: 'y' }],
+    });
+    expect((await getSettings()).shared_updated_at > afterUsers).toBe(true);
+  });
+});
+
 describe('reorderItems', () => {
   it('changes item order', async () => {
     const cl = await createChecklist({ name_en: 'A', name_is: 'A' });
