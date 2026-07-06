@@ -1,5 +1,6 @@
 import { db, type Checklist, type Item, type Run, type Settings, type SyncState } from './schema';
 import { uuid } from '$lib/utils/uuid';
+import { notifyContentChanged } from '$lib/sync/content-signal';
 
 const now = () => new Date().toISOString();
 
@@ -13,6 +14,7 @@ export async function createChecklist(input: { name_en: string; name_is: string 
     updated_at: now(),
   };
   await db.checklists.add(cl);
+  notifyContentChanged();
   return cl;
 }
 
@@ -26,6 +28,7 @@ export async function getChecklist(id: string): Promise<Checklist | undefined> {
 
 export async function updateChecklist(id: string, patch: Partial<Checklist>): Promise<void> {
   await db.checklists.update(id, { ...patch, updated_at: now() });
+  notifyContentChanged();
 }
 
 export async function deleteChecklist(id: string): Promise<void> {
@@ -34,6 +37,7 @@ export async function deleteChecklist(id: string): Promise<void> {
     await db.checklists.delete(id);
     await db.tombstones.put({ id, deleted_at: now() });
   });
+  notifyContentChanged();
 }
 
 export async function addItem(
@@ -50,6 +54,7 @@ export async function addItem(
       await db.checklists.put(cl);
     }
   });
+  notifyContentChanged();
   return it;
 }
 
@@ -69,6 +74,7 @@ export async function updateItem(id: string, patch: Partial<Item>): Promise<void
     // bump the block's timestamp or the edit loses last-write-wins.
     if (it) await db.checklists.update(it.checklist_id, { updated_at: now() });
   });
+  notifyContentChanged();
 }
 
 export async function deleteItem(id: string): Promise<void> {
@@ -83,10 +89,12 @@ export async function deleteItem(id: string): Promise<void> {
       await db.checklists.put(cl);
     }
   });
+  notifyContentChanged();
 }
 
 export async function reorderItems(checklist_id: string, order: string[]): Promise<void> {
   await db.checklists.update(checklist_id, { item_order: order, updated_at: now() });
+  notifyContentChanged();
 }
 
 export async function saveRun(input: Omit<Run, 'id' | 'sync_status' | 'last_error' | 'attempt_count'>): Promise<Run> {
@@ -134,10 +142,12 @@ export async function getSettings(): Promise<Settings> {
 export async function saveSettings(patch: Partial<Omit<Settings, 'id'>>): Promise<Settings> {
   const current = await getSettings();
   const merged: Settings = { ...current, ...patch, id: 'singleton' };
-  if ('users' in patch || 'info_entries' in patch) {
+  const sharedChanged = 'users' in patch || 'info_entries' in patch;
+  if (sharedChanged) {
     merged.shared_updated_at = now();
   }
   await db.settings.put(merged);
+  if (sharedChanged) notifyContentChanged();
   return merged;
 }
 
