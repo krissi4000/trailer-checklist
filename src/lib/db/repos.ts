@@ -1,4 +1,4 @@
-import { db, type Checklist, type Item, type Run, type Settings } from './schema';
+import { db, type Checklist, type Item, type Run, type Settings, type SyncState } from './schema';
 import { uuid } from '$lib/utils/uuid';
 
 const now = () => new Date().toISOString();
@@ -106,7 +106,7 @@ export async function listRuns(): Promise<Run[]> {
   return db.runs.orderBy('finished_at').reverse().toArray();
 }
 
-const DEFAULT_SETTINGS: Settings = {
+export const DEFAULT_SETTINGS: Settings = {
   id: 'singleton',
   users: [],
   language: 'is',
@@ -115,6 +115,7 @@ const DEFAULT_SETTINGS: Settings = {
   device_name: 'tablet',
   info_entries: [],
   lang_default_migrated: false,
+  shared_updated_at: '',
 };
 
 export async function getSettings(): Promise<Settings> {
@@ -127,5 +128,23 @@ export async function saveSettings(patch: Partial<Omit<Settings, 'id'>>): Promis
   const current = await getSettings();
   const merged: Settings = { ...current, ...patch, id: 'singleton' };
   await db.settings.put(merged);
+  return merged;
+}
+
+const DEFAULT_SYNC_STATE: SyncState = {
+  id: 'singleton',
+  last_synced_rev: 0,
+  last_synced_at: null,
+  last_error: null,
+};
+
+export async function getSyncState(): Promise<SyncState> {
+  const s = await db.sync_state.get('singleton');
+  return { ...DEFAULT_SYNC_STATE, ...s };
+}
+
+export async function saveSyncState(patch: Partial<Omit<SyncState, 'id'>>): Promise<SyncState> {
+  const merged: SyncState = { ...(await getSyncState()), ...patch, id: 'singleton' };
+  await db.sync_state.put(merged);
   return merged;
 }
