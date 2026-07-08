@@ -9,21 +9,41 @@ export type PushResult =
   | { status: 'conflict'; rev: number; bundle: ContentBundle }
   | { status: 'error'; error: string };
 
-async function post(url: string, secret: string, body: Record<string, unknown>): Promise<Record<string, unknown>> {
-  const res = await fetch(url, {
-    method: 'POST',
-    // text/plain keeps this a "simple" request: Apps Script web apps never
-    // answer the OPTIONS preflight that application/json would trigger.
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({ ...body, secret }),
-  });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return (await res.json()) as Record<string, unknown>;
+// Apps Script cold-starts after idle periods; the first request can take tens
+// of seconds. Without a ceiling a stalled request leaves the UI spinning
+// forever, so abort and surface a retryable error instead.
+const DEFAULT_TIMEOUT_MS = 20000;
+
+async function post(
+  url: string,
+  secret: string,
+  body: Record<string, unknown>,
+  timeoutMs: number = DEFAULT_TIMEOUT_MS,
+): Promise<Record<string, unknown>> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      // text/plain keeps this a "simple" request: Apps Script web apps never
+      // answer the OPTIONS preflight that application/json would trigger.
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ ...body, secret }),
+      signal: controller.signal,
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return (await res.json()) as Record<string, unknown>;
+  } catch (e) {
+    if (controller.signal.aborted) throw new Error(`request timed out after ${timeoutMs}ms`);
+    throw e;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
-export async function pullContent(url: string, secret: string): Promise<PullResult> {
+export async function pullContent(url: string, secret: string, timeoutMs?: number): Promise<PullResult> {
   try {
-    const r = await post(url, secret, { action: 'content-pull' });
+    const r = await post(url, secret, { action: 'content-pull' }, timeoutMs);
     if (!r.ok) return { status: 'error', error: String(r.error ?? 'pull failed') };
     return { status: 'ok', rev: Number(r.rev ?? 0), bundle: (r.bundle as ContentBundle | null) ?? null };
   } catch (e) {

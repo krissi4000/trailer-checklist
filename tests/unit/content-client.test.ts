@@ -42,6 +42,24 @@ describe('pullContent', () => {
     const r = await pullContent(URL_, 's');
     expect(r.status).toBe('error');
   });
+
+  it('times out a hanging request and reports a timeout error', async () => {
+    vi.useFakeTimers();
+    // A fetch that never resolves on its own, but honours the abort signal.
+    vi.stubGlobal('fetch', (_url: string, init: RequestInit) =>
+      new Promise((_resolve, reject) => {
+        init.signal?.addEventListener('abort', () =>
+          reject(new DOMException('aborted', 'AbortError')),
+        );
+      }),
+    );
+    const p = pullContent(URL_, 's', 100);
+    await vi.advanceTimersByTimeAsync(101);
+    const r = await p;
+    expect(r.status).toBe('error');
+    expect(r.status === 'error' && r.error).toMatch(/timed out/i);
+    vi.useRealTimers();
+  });
 });
 
 describe('pushContent', () => {
