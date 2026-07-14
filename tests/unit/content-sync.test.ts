@@ -1,8 +1,10 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { get } from 'svelte/store';
 import { db } from '$lib/db/schema';
 import { createChecklist, saveSettings, getSyncState } from '$lib/db/repos';
-import { syncContent } from '$lib/sync/content-sync';
+import {
+  syncContent, syncNow, flushSync, scheduleSync, cancelScheduledSync,
+} from '$lib/sync/content-sync';
 import { pullContent, pushContent } from '$lib/sync/content-client';
 import { syncMedia } from '$lib/sync/media-sync';
 import { syncStatus, contentVersion } from '$lib/stores/syncStatus';
@@ -24,6 +26,12 @@ beforeEach(async () => {
   vi.mocked(syncMedia).mockResolvedValue(undefined);
   syncStatus.set({ state: 'idle', lastSyncedAt: null, error: null });
   await saveSettings({ endpoint_url: URL_, shared_secret: 's' });
+});
+
+afterEach(() => {
+  // Clear any pending debounce/retry timers so they can't fire in a later test.
+  cancelScheduledSync();
+  vi.useRealTimers();
 });
 
 describe('syncContent', () => {
@@ -90,6 +98,7 @@ describe('syncContent', () => {
   });
 
   it('records errors without throwing', async () => {
+    vi.useFakeTimers(); // a failed sync schedules a retry timer; keep it fake so it can't leak
     vi.mocked(pullContent).mockResolvedValue({ status: 'error', error: 'HTTP 500' });
     await syncContent();
     expect(get(syncStatus).state).toBe('error');
@@ -108,5 +117,113 @@ describe('syncContent', () => {
     release({ status: 'ok', rev: 0, bundle: null });
     await first;
     await vi.waitFor(() => expect(pullContent).toHaveBeenCalledTimes(2));
+  });
+});
+
+describe('backoff retry', () => {
+  // Dexie (fake-indexeddb) schedules via setImmediate, which fake timers also
+  // freeze. Advance the clock, then pump the immediate queue so the in-catch
+  // saveSyncState settles and the next retry timer actually gets scheduled.
+  async function advance(ms: number) {
+    await vi.advanceTimersByTimeAsync(ms);
+    // Pump the setImmediate queue repeatedly so the full Dexie chain
+    // (buildBundle → syncMedia → saveSyncState) settles before assertions.
+    for (let i = 0; i < 30; i++) {
+      await Promise.resolve();
+      await vi.advanceTimersByTimeAsync(0);
+    }
+  }
+
+  it('retries a failed sync at 5s, 15s, 45s then gives up', async () => {
+    vi.useFakeTimers();
+    vi.mocked(pullContent).mockResolvedValue({ status: 'error', error: 'HTTP 500' });
+
+    await syncContent();
+    await advance(0);
+    expect(pullContent).toHaveBeenCalledTimes(1);
+
+    await advance(5000);
+    expect(pullContent).toHaveBeenCalledTimes(2);
+
+    await advance(15000);
+    expect(pullContent).toHaveBeenCalledTimes(3);
+
+    await advance(45000);
+    expect(pullContent).toHaveBeenCalledTimes(4);
+
+    // Retries exhausted — no further attempts on their own.
+    await advance(120000);
+    expect(pullContent).toHaveBeenCalledTimes(4);
+  });
+
+  it('stops retrying once a retry succeeds', async () => {
+    vi.useFakeTimers();
+    vi.mocked(pullContent)
+      .mockResolvedValueOnce({ status: 'error', error: 'HTTP 500' })
+      .mockResolvedValue({ status: 'ok', rev: 0, bundle: null });
+    vi.mocked(pushContent).mockResolvedValue({ status: 'ok', rev: 1 });
+
+    await syncContent();
+    await advance(0);
+    expect(get(syncStatus).state).toBe('error');
+
+    await advance(5000);
+    expect(get(syncStatus).state).toBe('idle');
+
+    // Success cleared the backoff — no lingering 15s retry.
+    await advance(60000);
+    expect(pullContent).toHaveBeenCalledTimes(2);
+  });
+
+  it('a fresh manual trigger restarts the backoff sequence', async () => {
+    vi.useFakeTimers();
+    vi.mocked(pullContent).mockResolvedValue({ status: 'error', error: 'HTTP 500' });
+
+    await syncContent(); // attempt 1, schedules retry #1 at 5s
+    await advance(5000); // retry #1 fires, schedules #2 at 15s
+    expect(pullContent).toHaveBeenCalledTimes(2);
+
+    await syncContent(); // manual trigger: resets the counter, attempt again now
+    await advance(0);
+    expect(pullContent).toHaveBeenCalledTimes(3);
+    await advance(5000); // fresh sequence -> next retry at 5s again
+    expect(pullContent).toHaveBeenCalledTimes(4);
+  });
+});
+
+describe('syncNow / flushSync', () => {
+  it('syncNow cancels a pending debounce and syncs immediately', async () => {
+    vi.useFakeTimers();
+    vi.mocked(pullContent).mockResolvedValue({ status: 'ok', rev: 0, bundle: null });
+
+    scheduleSync(4000); // a debounced edit-sync is pending
+    await syncNow();
+    expect(pullContent).toHaveBeenCalledTimes(1);
+
+    // The debounce was cancelled, so it must not fire a second sync.
+    await vi.advanceTimersByTimeAsync(4000);
+    expect(pullContent).toHaveBeenCalledTimes(1);
+  });
+
+  it('flushSync runs a pending debounced sync immediately', async () => {
+    vi.useFakeTimers();
+    vi.mocked(pullContent).mockResolvedValue({ status: 'ok', rev: 0, bundle: null });
+
+    scheduleSync(4000);
+    flushSync();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(pullContent).toHaveBeenCalledTimes(1);
+
+    await vi.advanceTimersByTimeAsync(4000);
+    expect(pullContent).toHaveBeenCalledTimes(1); // not fired again
+  });
+
+  it('flushSync is a no-op when no sync is pending', async () => {
+    vi.useFakeTimers();
+    vi.mocked(pullContent).mockResolvedValue({ status: 'ok', rev: 0, bundle: null });
+
+    flushSync();
+    await vi.advanceTimersByTimeAsync(10000);
+    expect(pullContent).not.toHaveBeenCalled();
   });
 });
