@@ -1,11 +1,13 @@
 <script lang="ts">
-  import { language } from '$lib/i18n/store';
+  import { language, t } from '$lib/i18n/store';
   import { updateSettings } from '$lib/stores/settings';
 
   export let title: string;
   export let pending: number = 0;
   export let online: boolean = true;
   export let onBack: (() => void) | null = null;
+  // When set, renders a green ✓ button (save + sync-now, then navigate back).
+  export let onDone: (() => void) | null = null;
 
   function setLang(l: 'en' | 'is') {
     language.set(l);
@@ -30,6 +32,9 @@
       <button class:active={$language === 'en'} on:click={() => setLang('en')}>EN</button>
       <button class:active={$language === 'is'} on:click={() => setLang('is')}>IS</button>
     </div>
+    {#if onDone}
+      <button class="done" on:click={onDone} aria-label={$t('common.save')}>✓</button>
+    {/if}
   </div>
 </header>
 
@@ -54,4 +59,8 @@
     border-radius: 8px; padding: 4px 10px; min-height: auto; font-size: 13px;
   }
   .lang .active { background: var(--surface-2); color: var(--text); border-color: var(--accent); }
+  .done {
+    background: var(--ok); color: #fff; border: 0; border-radius: 8px;
+    padding: 4px 12px; font-size: 18px; min-height: auto; line-height: 1;
+  }
 </style>
