@@ -7,9 +7,17 @@
   import { updateItem } from '$lib/db/repos';
   import type { Item } from '$lib/db/schema';
   import { back } from '$lib/stores/screen';
+  import { syncNow } from '$lib/sync/content-sync';
 
   export let checklistId: string;
   export let itemId: string;
+
+  // Edits already persist as you type; the ✓ pushes them to the server now
+  // (skipping the debounce), then returns.
+  function done() {
+    void syncNow();
+    back();
+  }
 
   let it: Item | undefined;
   let initialized = false;
@@ -38,7 +46,7 @@
   void checklistId;
 </script>
 
-<Header title={$t('edit.title')} onBack={back} />
+<Header title={$t('edit.title')} onBack={back} onDone={done} />
 
 <main>
   {#if it}

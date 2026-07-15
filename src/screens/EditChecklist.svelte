@@ -10,8 +10,16 @@
   } from '$lib/db/repos';
   import type { Checklist, Item } from '$lib/db/schema';
   import { navigate, back } from '$lib/stores/screen';
+  import { syncNow } from '$lib/sync/content-sync';
 
   export let checklistId: string;
+
+  // Edits already persist as you type; the ✓ pushes them to the server now
+  // (skipping the debounce), then returns.
+  function done() {
+    void syncNow();
+    back();
+  }
 
   const flipDurationMs = 150;
 
@@ -69,7 +77,7 @@
   }
 </script>
 
-<Header title={$t('edit.title')} onBack={back} />
+<Header title={$t('edit.title')} onBack={back} onDone={done} />
 
 <main>
   {#if cl}

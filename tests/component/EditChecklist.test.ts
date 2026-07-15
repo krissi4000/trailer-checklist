@@ -1,12 +1,21 @@
-import { describe, expect, it, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/svelte';
+import { describe, expect, it, beforeEach, vi } from 'vitest';
+import { render, screen, fireEvent } from '@testing-library/svelte';
+import { get } from 'svelte/store';
 import EditChecklist from '$screens/EditChecklist.svelte';
 import { createChecklist, addItem } from '$lib/db/repos';
 import { language } from '$lib/i18n/store';
 import { db } from '$lib/db/schema';
+import { currentScreen, reset, navigate } from '$lib/stores/screen';
+import { syncNow } from '$lib/sync/content-sync';
+
+vi.mock('$lib/sync/content-sync', () => ({
+  syncNow: vi.fn().mockResolvedValue(undefined),
+}));
 
 describe('EditChecklist', () => {
   beforeEach(async () => {
+    reset();
+    vi.clearAllMocks();
     await db.open();
     language.set('is');
   });
@@ -36,5 +45,16 @@ describe('EditChecklist', () => {
     });
     render(EditChecklist, { props: { checklistId: cl.id } });
     expect(await screen.findByText(/Fyrsti/)).toBeInTheDocument();
+  });
+
+  it('done button syncs immediately and navigates back', async () => {
+    language.set('en'); // aria-label of ✓ follows the language (common.save)
+    const cl = await createChecklist({ name_en: 'X', name_is: 'X' });
+    reset();
+    navigate({ name: 'editChecklist', checklistId: cl.id }); // stack: home -> editChecklist
+    render(EditChecklist, { props: { checklistId: cl.id } });
+    await fireEvent.click(await screen.findByRole('button', { name: 'Save' }));
+    expect(syncNow).toHaveBeenCalledTimes(1);
+    expect(get(currentScreen)).toEqual({ name: 'home' });
   });
 });
