@@ -1,11 +1,11 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import { currentScreen } from '$lib/stores/screen';
   import { loadSettings } from '$lib/stores/settings';
   import { refreshPending } from '$lib/stores/pending';
   import { online } from '$lib/stores/network';
   import { runQueue } from '$lib/sync/queue';
-  import { syncContent, scheduleSync } from '$lib/sync/content-sync';
+  import { syncContent, scheduleSync, flushSync } from '$lib/sync/content-sync';
   import { onContentChanged } from '$lib/sync/content-signal';
   import { seedIfEmpty } from '$lib/db/seed';
   import Toast from '$lib/components/Toast.svelte';
@@ -34,6 +34,23 @@
         }
       });
     }
+  });
+
+  // Backgrounding may freeze/kill the page: flush a pending debounced sync as a
+  // last chance to push. Returning to the foreground pulls in edits other
+  // devices made while we were away. Registered synchronously (separate from
+  // the async onMount) so onDestroy can tear them down.
+  function onVisibility() {
+    if (document.visibilityState === 'hidden') flushSync();
+    else void syncContent();
+  }
+  onMount(() => {
+    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('pagehide', flushSync);
+  });
+  onDestroy(() => {
+    document.removeEventListener('visibilitychange', onVisibility);
+    window.removeEventListener('pagehide', flushSync);
   });
 
   let wasOnline = false;
