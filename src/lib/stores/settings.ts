@@ -7,7 +7,12 @@ const _settings = writable<Settings | null>(null);
 export const settings = { subscribe: _settings.subscribe };
 
 export async function loadSettings(): Promise<void> {
-  const s = await getSettings();
+  let s = await getSettings();
+  if (!s.lang_default_migrated) {
+    // One-time flip to Icelandic: records saved before it became the
+    // default carry an implicit 'en' the user never actually chose.
+    s = await saveSettings({ language: 'is', lang_default_migrated: true });
+  }
   _settings.set(s);
   language.set(s.language);
 }

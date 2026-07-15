@@ -11,6 +11,9 @@ export default defineConfig({
     include: ['tests/**/*.test.ts'],
   },
   resolve: {
+    // Without this, svelte resolves to its server build in tests and
+    // onMount never fires.
+    conditions: ['browser'],
     alias: {
       $lib: fileURLToPath(new URL('./src/lib', import.meta.url)),
       $screens: fileURLToPath(new URL('./src/screens', import.meta.url)),

@@ -54,6 +54,13 @@ export interface Run {
   attempt_count: number;
 }
 
+export interface InfoEntry {
+  id: string;
+  label_en: string;
+  label_is: string;
+  value: string;
+}
+
 export interface Settings {
   id: 'singleton';
   users: string[];
@@ -61,6 +68,21 @@ export interface Settings {
   endpoint_url: string;
   shared_secret: string;
   device_name: string;
+  info_entries: InfoEntry[];
+  lang_default_migrated: boolean;
+  shared_updated_at: string; // stamp of the users+info_entries merge unit; '' = never touched
+}
+
+export interface Tombstone {
+  id: string; // checklist id
+  deleted_at: string; // ISO
+}
+
+export interface SyncState {
+  id: 'singleton';
+  last_synced_rev: number;
+  last_synced_at: string | null;
+  last_error: string | null;
 }
 
 export class TrailerDB extends Dexie {
@@ -69,6 +91,8 @@ export class TrailerDB extends Dexie {
   media!: Table<Media, string>;
   runs!: Table<Run, string>;
   settings!: Table<Settings, string>;
+  tombstones!: Table<Tombstone, string>;
+  sync_state!: Table<SyncState, string>;
 
   constructor() {
     super('trailer-checklist');
@@ -78,6 +102,15 @@ export class TrailerDB extends Dexie {
       media: 'id',
       runs: 'id, sync_status, finished_at',
       settings: 'id',
+    });
+    this.version(2).stores({
+      checklists: 'id, updated_at',
+      items: 'id, checklist_id',
+      media: 'id',
+      runs: 'id, sync_status, finished_at',
+      settings: 'id',
+      tombstones: 'id',
+      sync_state: 'id',
     });
   }
 }

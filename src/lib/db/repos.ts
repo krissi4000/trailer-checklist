@@ -1,5 +1,6 @@
-import { db, type Checklist, type Item, type Run, type Settings } from './schema';
+import { db, type Checklist, type Item, type Run, type Settings, type SyncState } from './schema';
 import { uuid } from '$lib/utils/uuid';
+import { notifyContentChanged } from '$lib/sync/content-signal';
 
 const now = () => new Date().toISOString();
 
@@ -13,6 +14,7 @@ export async function createChecklist(input: { name_en: string; name_is: string 
     updated_at: now(),
   };
   await db.checklists.add(cl);
+  notifyContentChanged();
   return cl;
 }
 
@@ -26,13 +28,16 @@ export async function getChecklist(id: string): Promise<Checklist | undefined> {
 
 export async function updateChecklist(id: string, patch: Partial<Checklist>): Promise<void> {
   await db.checklists.update(id, { ...patch, updated_at: now() });
+  notifyContentChanged();
 }
 
 export async function deleteChecklist(id: string): Promise<void> {
-  await db.transaction('rw', db.checklists, db.items, async () => {
+  await db.transaction('rw', db.checklists, db.items, db.tombstones, async () => {
     await db.items.where('checklist_id').equals(id).delete();
     await db.checklists.delete(id);
+    await db.tombstones.put({ id, deleted_at: now() });
   });
+  notifyContentChanged();
 }
 
 export async function addItem(
@@ -49,6 +54,7 @@ export async function addItem(
       await db.checklists.put(cl);
     }
   });
+  notifyContentChanged();
   return it;
 }
 
@@ -61,7 +67,14 @@ export async function listItems(checklist_id: string): Promise<Item[]> {
 }
 
 export async function updateItem(id: string, patch: Partial<Item>): Promise<void> {
-  await db.items.update(id, patch);
+  await db.transaction('rw', db.items, db.checklists, async () => {
+    await db.items.update(id, patch);
+    const it = await db.items.get(id);
+    // Items merge as part of their checklist block, so any item edit must
+    // bump the block's timestamp or the edit loses last-write-wins.
+    if (it) await db.checklists.update(it.checklist_id, { updated_at: now() });
+  });
+  notifyContentChanged();
 }
 
 export async function deleteItem(id: string): Promise<void> {
@@ -76,10 +89,12 @@ export async function deleteItem(id: string): Promise<void> {
       await db.checklists.put(cl);
     }
   });
+  notifyContentChanged();
 }
 
 export async function reorderItems(checklist_id: string, order: string[]): Promise<void> {
   await db.checklists.update(checklist_id, { item_order: order, updated_at: now() });
+  notifyContentChanged();
 }
 
 export async function saveRun(input: Omit<Run, 'id' | 'sync_status' | 'last_error' | 'attempt_count'>): Promise<Run> {
@@ -106,23 +121,50 @@ export async function listRuns(): Promise<Run[]> {
   return db.runs.orderBy('finished_at').reverse().toArray();
 }
 
-const DEFAULT_SETTINGS: Settings = {
+export const DEFAULT_SETTINGS: Settings = {
   id: 'singleton',
   users: [],
-  language: 'en',
+  language: 'is',
   endpoint_url: '',
   shared_secret: '',
   device_name: 'tablet',
+  info_entries: [],
+  lang_default_migrated: false,
+  shared_updated_at: '',
 };
 
 export async function getSettings(): Promise<Settings> {
   const s = await db.settings.get('singleton');
-  return s ?? DEFAULT_SETTINGS;
+  // Merge so records saved before newer fields existed get their defaults.
+  return { ...DEFAULT_SETTINGS, ...s };
 }
 
 export async function saveSettings(patch: Partial<Omit<Settings, 'id'>>): Promise<Settings> {
   const current = await getSettings();
   const merged: Settings = { ...current, ...patch, id: 'singleton' };
+  const sharedChanged = 'users' in patch || 'info_entries' in patch;
+  if (sharedChanged) {
+    merged.shared_updated_at = now();
+  }
   await db.settings.put(merged);
+  if (sharedChanged) notifyContentChanged();
+  return merged;
+}
+
+const DEFAULT_SYNC_STATE: SyncState = {
+  id: 'singleton',
+  last_synced_rev: 0,
+  last_synced_at: null,
+  last_error: null,
+};
+
+export async function getSyncState(): Promise<SyncState> {
+  const s = await db.sync_state.get('singleton');
+  return { ...DEFAULT_SYNC_STATE, ...s };
+}
+
+export async function saveSyncState(patch: Partial<Omit<SyncState, 'id'>>): Promise<SyncState> {
+  const merged: SyncState = { ...(await getSyncState()), ...patch, id: 'singleton' };
+  await db.sync_state.put(merged);
   return merged;
 }

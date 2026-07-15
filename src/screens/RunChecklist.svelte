@@ -4,6 +4,7 @@
   import { getChecklist, listItems } from '$lib/db/repos';
   import type { Checklist, Item } from '$lib/db/schema';
   import { navigate, back } from '$lib/stores/screen';
+  import { settings } from '$lib/stores/settings';
 
   export let checklistId: string;
   export let user: string;
@@ -63,9 +64,10 @@
 
 <main>
   <ul>
-    {#each items as it (it.id)}
+    {#each items as it, i (it.id)}
       <li>
         <label>
+          <span class="num">{i + 1}.</span>
           <input
             type="checkbox"
             aria-label={pickName(it.title_en, it.title_is)}
@@ -73,6 +75,9 @@
             on:change={() => toggleCheck(it.id)}
           />
           <span class="title">{pickName(it.title_en, it.title_is)}</span>
+          {#if pickName(it.instructions_en, it.instructions_is)}
+            <span class="desc">| {pickName(it.instructions_en, it.instructions_is)}</span>
+          {/if}
         </label>
         <button
           class="more"
@@ -82,6 +87,20 @@
       </li>
     {/each}
   </ul>
+
+  {#if ($settings?.info_entries ?? []).length > 0}
+    <section class="info">
+      <h3>{$t('run.info')}</h3>
+      <dl>
+        {#each $settings?.info_entries ?? [] as entry (entry.id)}
+          <div class="info-row">
+            <dt>{pickName(entry.label_en, entry.label_is)}</dt>
+            <dd>{entry.value}</dd>
+          </div>
+        {/each}
+      </dl>
+    </section>
+  {/if}
 
   <button class="submit" on:click={submit} disabled={items.length === 0}>
     {$t('run.submit')}
@@ -97,12 +116,30 @@
   }
   label { display: flex; align-items: center; gap: 12px; flex: 1; }
   input[type="checkbox"] { width: 28px; height: 28px; }
-  .title { font-size: 17px; }
+  .num { color: var(--muted); font-size: 15px; min-width: 24px; text-align: right; }
+  .title { font-size: 17px; flex-shrink: 0; }
+  .desc {
+    color: var(--muted); font-style: italic; font-size: 14px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    flex: 1; min-width: 0;
+  }
   .more {
     background: var(--surface-2); color: var(--text);
     border: 1px solid var(--border); border-radius: 50%;
     width: 40px; height: 40px; min-height: auto; font-size: 18px;
   }
+  .info { margin-top: 24px; }
+  .info h3 {
+    font-size: 13px; color: var(--muted); margin: 0 0 8px;
+    text-transform: uppercase; letter-spacing: 0.08em;
+  }
+  .info dl { margin: 0; }
+  .info-row {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+    padding: 10px 12px; border-bottom: 1px solid var(--border);
+  }
+  .info dt { color: var(--muted); }
+  .info dd { margin: 0; }
   .submit {
     position: fixed; bottom: 16px; left: 16px; right: 16px;
     background: var(--accent); color: #fff;

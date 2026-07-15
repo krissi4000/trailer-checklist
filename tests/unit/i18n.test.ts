@@ -1,8 +1,14 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { get } from 'svelte/store';
 import { language, t } from '$lib/i18n/store';
 
 describe('i18n', () => {
+  it('defaults to Icelandic', async () => {
+    vi.resetModules();
+    const fresh = await import('$lib/i18n/store');
+    expect(get(fresh.language)).toBe('is');
+  });
+
   it('returns english string by default', () => {
     language.set('en');
     expect(get(t)('home.title')).toBe('Trailer Checklist');

@@ -3,7 +3,7 @@ import { en, type Key } from './en';
 import { is } from './is';
 
 export type Lang = 'en' | 'is';
-export const language = writable<Lang>('en');
+export const language = writable<Lang>('is');
 
 const tables: Record<Lang, Record<string, string>> = { en, is };
 

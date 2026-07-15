@@ -44,6 +44,19 @@ describe('postRun', () => {
     if (r.status === 'fatal') expect(r.error).toContain('bad secret');
   });
 
+  it('posts as text/plain so the cross-origin request needs no CORS preflight', async () => {
+    // Apps Script web apps never answer OPTIONS; application/json would be
+    // preflighted and blocked by the browser.
+    const f = vi.fn(async () => new Response(JSON.stringify({ ok: true, row: 1 }), {
+      status: 200, headers: { 'content-type': 'application/json' },
+    }));
+    vi.stubGlobal('fetch', f);
+    await postRun('https://example/exec', 'sek', payload);
+    const calls = f.mock.calls as unknown as Array<[string, RequestInit]>;
+    const headers = calls[0]?.[1]?.headers as Record<string, string>;
+    expect(headers['Content-Type']).toMatch(/^text\/plain/);
+  });
+
   it('sends the shared secret in the JSON body', async () => {
     const f = vi.fn(async () => new Response(JSON.stringify({ ok: true, row: 1 }), {
       status: 200, headers: { 'content-type': 'application/json' },

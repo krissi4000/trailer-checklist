@@ -15,7 +15,9 @@ export async function postRun(
   try {
     res = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      // text/plain keeps this a "simple" request: Apps Script web apps never
+      // answer the OPTIONS preflight that application/json would trigger.
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ ...payload, secret }),
     });
   } catch (e) {

@@ -90,7 +90,7 @@ describe('settings repo', () => {
   it('returns defaults when no settings exist', async () => {
     const s = await getSettings();
     expect(s.id).toBe('singleton');
-    expect(s.language).toBe('en');
+    expect(s.language).toBe('is');
     expect(s.users).toEqual([]);
   });
 
@@ -99,6 +99,26 @@ describe('settings repo', () => {
     const s = await getSettings();
     expect(s.language).toBe('is');
     expect(s.users).toEqual(['Anna', 'Kári']);
+  });
+
+  it('defaults info_entries to an empty array, also for legacy records', async () => {
+    const fresh = await getSettings();
+    expect(fresh.info_entries).toEqual([]);
+
+    // Simulate a settings record saved before info_entries existed.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await db.settings.put({ id: 'singleton', users: [], language: 'is' } as any);
+    const legacy = await getSettings();
+    expect(legacy.info_entries).toEqual([]);
+  });
+
+  it('persists info entries', async () => {
+    await saveSettings({
+      info_entries: [{ id: 'i1', label_en: 'WiFi password', label_is: 'WiFi lykilorð', value: 'hunter2' }],
+    });
+    const s = await getSettings();
+    expect(s.info_entries).toHaveLength(1);
+    expect(s.info_entries[0].value).toBe('hunter2');
   });
 });
 
@@ -149,6 +169,46 @@ describe('updateItem', () => {
     const items = await listItems(cl.id);
     expect(items[0].title_en).toBe('New');
     expect(items[0].title_is).toBe('Gamalt');
+  });
+});
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+describe('sync bookkeeping', () => {
+  it('updateItem bumps the parent checklist updated_at', async () => {
+    const cl = await createChecklist({ name_en: 'A', name_is: 'A' });
+    const it = await addItem(cl.id, {
+      title_en: 'a', title_is: 'a',
+      instructions_en: '', instructions_is: '', media_ids: [],
+    });
+    const before = (await listChecklists())[0].updated_at;
+    await sleep(5);
+    await updateItem(it.id, { title_en: 'b' });
+    const after = (await listChecklists())[0].updated_at;
+    expect(after > before).toBe(true);
+  });
+
+  it('deleteChecklist writes a tombstone', async () => {
+    const cl = await createChecklist({ name_en: 'A', name_is: 'A' });
+    await deleteChecklist(cl.id);
+    const tomb = await db.tombstones.get(cl.id);
+    expect(tomb).toBeDefined();
+    expect(tomb!.deleted_at).toBeTruthy();
+  });
+
+  it('saveSettings stamps shared_updated_at for users and info_entries only', async () => {
+    await saveSettings({ language: 'en' });
+    expect((await getSettings()).shared_updated_at).toBe('');
+
+    await saveSettings({ users: ['Anna'] });
+    const afterUsers = (await getSettings()).shared_updated_at;
+    expect(afterUsers).not.toBe('');
+
+    await sleep(5);
+    await saveSettings({
+      info_entries: [{ id: 'i1', label_en: 'x', label_is: 'x', value: 'y' }],
+    });
+    expect((await getSettings()).shared_updated_at > afterUsers).toBe(true);
   });
 });
 
