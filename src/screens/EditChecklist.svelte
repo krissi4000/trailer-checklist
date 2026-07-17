@@ -10,6 +10,8 @@
   } from '$lib/db/repos';
   import type { Checklist, Item } from '$lib/db/schema';
   import { navigate, back } from '$lib/stores/screen';
+  import { syncNow } from '$lib/sync/content-sync';
+  import { showToast } from '$lib/stores/toast';
 
   export let checklistId: string;
 
@@ -67,9 +69,17 @@
     if (e.detail.info.source === SOURCES.POINTER) dragDisabled = true;
     await reorderItems(checklistId, items.map((i) => i.id));
   }
+
+  // Edits are already persisted on input; the checkmark makes saving explicit:
+  // it pushes to the server right away instead of waiting out the debounce.
+  function confirmSave() {
+    syncNow();
+    showToast($t('edit.saved'), 'ok');
+    back();
+  }
 </script>
 
-<Header title={$t('edit.title')} onBack={back} />
+<Header title={$t('edit.title')} onBack={back} onConfirm={confirmSave} />
 
 <main>
   {#if cl}

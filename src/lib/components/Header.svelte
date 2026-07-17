@@ -6,6 +6,7 @@
   export let pending: number = 0;
   export let online: boolean = true;
   export let onBack: (() => void) | null = null;
+  export let onConfirm: (() => void) | null = null;
 
   function setLang(l: 'en' | 'is') {
     language.set(l);
@@ -30,6 +31,9 @@
       <button class:active={$language === 'en'} on:click={() => setLang('en')}>EN</button>
       <button class:active={$language === 'is'} on:click={() => setLang('is')}>IS</button>
     </div>
+    {#if onConfirm}
+      <button class="confirm" on:click={onConfirm} aria-label="Save">✓</button>
+    {/if}
   </div>
 </header>
 
@@ -54,4 +58,8 @@
     border-radius: 8px; padding: 4px 10px; min-height: auto; font-size: 13px;
   }
   .lang .active { background: var(--surface-2); color: var(--text); border-color: var(--accent); }
+  .confirm {
+    background: var(--ok); color: #06281a; border: 0; border-radius: 10px;
+    font-size: 20px; font-weight: 700; min-height: auto; padding: 8px 16px;
+  }
 </style>

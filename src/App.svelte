@@ -5,7 +5,7 @@
   import { refreshPending } from '$lib/stores/pending';
   import { online } from '$lib/stores/network';
   import { runQueue } from '$lib/sync/queue';
-  import { syncContent, scheduleSync } from '$lib/sync/content-sync';
+  import { syncContent, scheduleSync, flushSync } from '$lib/sync/content-sync';
   import { onContentChanged } from '$lib/sync/content-signal';
   import { seedIfEmpty } from '$lib/db/seed';
   import Toast from '$lib/components/Toast.svelte';
@@ -36,6 +36,13 @@
     }
   });
 
+  // Backgrounding the app is the last chance to push a debounced edit before
+  // the page dies; resuming is the moment to pick up edits from other devices.
+  function onVisibility() {
+    if (document.visibilityState === 'hidden') flushSync();
+    else void syncContent();
+  }
+
   let wasOnline = false;
   $: if ($online && !wasOnline) {
     wasOnline = true;
@@ -45,6 +52,9 @@
     wasOnline = false;
   }
 </script>
+
+<svelte:document on:visibilitychange={onVisibility} />
+<svelte:window on:pagehide={() => flushSync()} />
 
 {#if $currentScreen.name === 'home'}
   <Home />

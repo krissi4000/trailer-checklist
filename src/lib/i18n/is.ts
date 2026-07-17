@@ -26,6 +26,7 @@ export const is: Record<Key, string> = {
   'edit.addItem': 'Bæta við lið',
   'edit.delete': 'Eyða',
   'edit.confirmDelete': 'Eyða þessu?',
+  'edit.saved': 'Vistað ✓',
   'edit.checklistName': 'Heiti gátlista',
   'editItem.title': 'Titill',
   'editItem.instructions': 'Leiðbeiningar',

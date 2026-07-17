@@ -7,6 +7,8 @@
   import { updateItem } from '$lib/db/repos';
   import type { Item } from '$lib/db/schema';
   import { back } from '$lib/stores/screen';
+  import { syncNow } from '$lib/sync/content-sync';
+  import { showToast } from '$lib/stores/toast';
 
   export let checklistId: string;
   export let itemId: string;
@@ -36,9 +38,17 @@
   }
   // checklistId kept for router contract
   void checklistId;
+
+  // Edits are already persisted on input; the checkmark makes saving explicit:
+  // it pushes to the server right away instead of waiting out the debounce.
+  function confirmSave() {
+    syncNow();
+    showToast($t('edit.saved'), 'ok');
+    back();
+  }
 </script>
 
-<Header title={$t('edit.title')} onBack={back} />
+<Header title={$t('edit.title')} onBack={back} onConfirm={confirmSave} />
 
 <main>
   {#if it}

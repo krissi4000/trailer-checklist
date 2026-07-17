@@ -24,6 +24,7 @@ export const en = {
   'edit.addItem': 'Add item',
   'edit.delete': 'Delete',
   'edit.confirmDelete': 'Delete this?',
+  'edit.saved': 'Saved ✓',
   'edit.checklistName': 'Checklist name',
   'editItem.title': 'Title',
   'editItem.instructions': 'Instructions',
