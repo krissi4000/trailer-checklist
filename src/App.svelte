@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import { currentScreen } from '$lib/stores/screen';
   import { loadSettings } from '$lib/stores/settings';
   import { refreshPending } from '$lib/stores/pending';
@@ -36,12 +36,22 @@
     }
   });
 
-  // Backgrounding the app is the last chance to push a debounced edit before
-  // the page dies; resuming is the moment to pick up edits from other devices.
+  // Backgrounding may freeze/kill the page: flush a pending debounced sync as a
+  // last chance to push. Returning to the foreground pulls in edits other
+  // devices made while we were away. Registered synchronously (separate from
+  // the async onMount) so onDestroy can tear them down.
   function onVisibility() {
     if (document.visibilityState === 'hidden') flushSync();
     else void syncContent();
   }
+  onMount(() => {
+    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('pagehide', flushSync);
+  });
+  onDestroy(() => {
+    document.removeEventListener('visibilitychange', onVisibility);
+    window.removeEventListener('pagehide', flushSync);
+  });
 
   let wasOnline = false;
   $: if ($online && !wasOnline) {
@@ -52,9 +62,6 @@
     wasOnline = false;
   }
 </script>
-
-<svelte:document on:visibilitychange={onVisibility} />
-<svelte:window on:pagehide={() => flushSync()} />
 
 {#if $currentScreen.name === 'home'}
   <Home />

@@ -6,22 +6,19 @@ import { mergeBundles, bundlesEqual, emptyBundle, referencedMediaIds } from './b
 import { pullContent, pushContent } from './content-client';
 import { syncMedia } from './media-sync';
 
+// A cold-started Apps Script times out the first request (20 s in
+// content-client), so without retries a debounced edit-push silently never
+// reaches the server until the next trigger. Retry at these offsets, then wait
+// for the next external trigger to start a fresh sequence.
+const RETRY_DELAYS = [5000, 15000, 45000];
+
 let inFlight = false;
 let queued = false;
 let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+let retryTimer: ReturnType<typeof setTimeout> | null = null;
 let retryCount = 0;
 
-// Apps Script cold-starts after idle and the first request routinely exceeds
-// the client timeout, so a failed sync retries on its own instead of waiting
-// for the next edit/open/reconnect trigger.
-const RETRY_DELAYS_MS = [5_000, 15_000, 45_000];
-
 export function scheduleSync(delayMs = 4000): void {
-  retryCount = 0; // a fresh trigger deserves a fresh set of retries
-  schedule(delayMs);
-}
-
-function schedule(delayMs: number): void {
   if (debounceTimer) clearTimeout(debounceTimer);
   debounceTimer = setTimeout(() => {
     debounceTimer = null;
@@ -29,38 +26,41 @@ function schedule(delayMs: number): void {
   }, delayMs);
 }
 
-// Cancel any pending debounce and sync immediately (explicit save button).
-export function syncNow(): void {
-  if (debounceTimer) {
-    clearTimeout(debounceTimer);
-    debounceTimer = null;
-  }
+// Cancel any pending debounced or retry sync (e.g. before shutdown or when
+// starting a fresh cycle). Leaves any in-flight sync alone.
+export function cancelScheduledSync(): void {
+  if (debounceTimer) { clearTimeout(debounceTimer); debounceTimer = null; }
+  if (retryTimer) { clearTimeout(retryTimer); retryTimer = null; }
   retryCount = 0;
+}
+
+// Save button (✓) on the edit screens: skip the debounce and push right now.
+export function syncNow(): Promise<void> {
+  if (debounceTimer) { clearTimeout(debounceTimer); debounceTimer = null; }
+  return syncContent();
+}
+
+// Backgrounding the app (visibilitychange hidden / pagehide): if an edit-sync
+// is still waiting out its debounce, run it now — last chance before the page
+// may be frozen or killed. No-op if nothing is pending.
+export function flushSync(): void {
+  if (!debounceTimer) return;
+  clearTimeout(debounceTimer);
+  debounceTimer = null;
   void syncContent();
 }
 
-// If a debounced sync is pending, run it right now. Called when the app is
-// backgrounded/closed — the last chance to push edits before the page dies.
-export function flushSync(): void {
-  if (debounceTimer) syncNow();
-}
-
-// Test hook: clear timers and retry state between tests.
-export function _resetSyncScheduling(): void {
-  if (debounceTimer) {
-    clearTimeout(debounceTimer);
-    debounceTimer = null;
-  }
-  retryCount = 0;
-  queued = false;
-}
-
-export async function syncContent(): Promise<void> {
+export async function syncContent(isRetry = false): Promise<void> {
   const settings = await getSettings();
   if (!settings.endpoint_url || !navigator.onLine) return;
   if (inFlight) {
     queued = true;
     return;
+  }
+  // A fresh, externally-triggered sync starts a new backoff sequence.
+  if (!isRetry) {
+    retryCount = 0;
+    if (retryTimer) { clearTimeout(retryTimer); retryTimer = null; }
   }
   inFlight = true;
   syncStatus.update((s) => ({ ...s, state: 'syncing' }));
@@ -101,14 +101,18 @@ export async function syncContent(): Promise<void> {
     await syncMedia(referencedMediaIds(merged), url, secret);
     await saveSyncState({ last_synced_rev: rev, last_synced_at: now, last_error: null });
     syncStatus.set({ state: 'idle', lastSyncedAt: now, error: null });
+    // Success clears any in-progress backoff.
     retryCount = 0;
+    if (retryTimer) { clearTimeout(retryTimer); retryTimer = null; }
   } catch (e) {
     const msg = String((e as Error).message ?? e);
     await saveSyncState({ last_error: msg });
     syncStatus.update((s) => ({ ...s, state: 'error', error: msg }));
-    if (retryCount < RETRY_DELAYS_MS.length) {
-      schedule(RETRY_DELAYS_MS[retryCount]);
+    if (retryCount < RETRY_DELAYS.length) {
+      const delay = RETRY_DELAYS[retryCount];
       retryCount++;
+      if (retryTimer) clearTimeout(retryTimer);
+      retryTimer = setTimeout(() => { retryTimer = null; void syncContent(true); }, delay);
     }
   } finally {
     inFlight = false;

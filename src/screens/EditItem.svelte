@@ -13,6 +13,14 @@
   export let checklistId: string;
   export let itemId: string;
 
+  // Edits already persist as you type; the ✓ pushes them to the server now
+  // (skipping the debounce), then returns.
+  function done() {
+    void syncNow();
+    showToast($t('edit.saved'), 'ok');
+    back();
+  }
+
   let it: Item | undefined;
   let initialized = false;
 
@@ -38,17 +46,9 @@
   }
   // checklistId kept for router contract
   void checklistId;
-
-  // Edits are already persisted on input; the checkmark makes saving explicit:
-  // it pushes to the server right away instead of waiting out the debounce.
-  function confirmSave() {
-    syncNow();
-    showToast($t('edit.saved'), 'ok');
-    back();
-  }
 </script>
 
-<Header title={$t('edit.title')} onBack={back} onConfirm={confirmSave} />
+<Header title={$t('edit.title')} onBack={back} onDone={done} />
 
 <main>
   {#if it}

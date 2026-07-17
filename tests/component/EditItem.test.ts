@@ -5,18 +5,19 @@ import EditItem from '$screens/EditItem.svelte';
 import { createChecklist, addItem, listItems } from '$lib/db/repos';
 import { db } from '$lib/db/schema';
 import { language } from '$lib/i18n/store';
+import { currentScreen, reset, navigate } from '$lib/stores/screen';
 import { syncNow } from '$lib/sync/content-sync';
-import { reset, navigate, screenStack } from '$lib/stores/screen';
 
 vi.mock('$lib/sync/content-sync', () => ({
-  syncNow: vi.fn(),
+  syncNow: vi.fn().mockResolvedValue(undefined),
 }));
 
 describe('EditItem', () => {
   beforeEach(async () => {
+    reset();
+    vi.clearAllMocks();
     await db.open();
     language.set('en');
-    vi.clearAllMocks();
   });
 
   it('persists title edits on input', async () => {
@@ -57,19 +58,17 @@ describe('EditItem', () => {
     expect(items[0].title_en).toBe('New');
   });
 
-  it('checkmark saves: syncs immediately and navigates back', async () => {
+  it('done button syncs immediately and navigates back', async () => {
     const cl = await createChecklist({ name_en: 'A', name_is: 'A' });
     const it = await addItem(cl.id, {
-      title_en: 'Old', title_is: '',
+      title_en: 'T', title_is: '',
       instructions_en: '', instructions_is: '', media_ids: [],
     });
     reset();
     navigate({ name: 'editItem', checklistId: cl.id, itemId: it.id });
     render(EditItem, { props: { checklistId: cl.id, itemId: it.id } });
-
-    await fireEvent.click(screen.getByLabelText('Save'));
-
-    expect(syncNow).toHaveBeenCalled();
-    expect(get(screenStack)).toHaveLength(1); // popped back off the stack
+    await fireEvent.click(await screen.findByRole('button', { name: 'Save' }));
+    expect(syncNow).toHaveBeenCalledTimes(1);
+    expect(get(currentScreen)).toEqual({ name: 'home' });
   });
 });
