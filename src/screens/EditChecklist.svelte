@@ -88,12 +88,9 @@
     >
       {#each items as it, i (it.id)}
         <li animate:flip={{ duration: flipDurationMs }}>
-          <button
-            type="button"
-            class="handle"
-            aria-label="Reorder"
-            use:dragHandle
-          >≡</button>
+          <!-- Must not be a <button>/form element: svelte-dnd-action aborts a
+               drag when the handle (event target) has a `.value` property. -->
+          <div class="handle" aria-label="Reorder" use:dragHandle>≡</div>
           <span class="num">{i + 1}.</span>
           <button class="row" on:click={() => navigate({ name: 'editItem', checklistId, itemId: it.id })}>
             {pickTitle(it) || '(no title)'}
