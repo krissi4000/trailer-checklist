@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { flip } from 'svelte/animate';
-  import { dndzone, SOURCES } from 'svelte-dnd-action';
+  import { dragHandleZone, dragHandle } from 'svelte-dnd-action';
   import Header from '$lib/components/Header.svelte';
   import LangField from '$lib/components/LangField.svelte';
   import { t, language } from '$lib/i18n/store';
@@ -27,7 +27,6 @@
 
   let cl: Checklist | undefined;
   let items: Item[] = [];
-  let dragDisabled = true;
 
   async function refresh() {
     cl = await getChecklist(checklistId);
@@ -61,20 +60,12 @@
     await refresh();
   }
 
-  function startDrag(e: Event) {
-    e.preventDefault();
-    dragDisabled = false;
-  }
-
   function handleConsider(e: CustomEvent<{ items: Item[] }>) {
     items = e.detail.items;
   }
 
-  async function handleFinalize(
-    e: CustomEvent<{ items: Item[]; info: { source: string } }>,
-  ) {
+  async function handleFinalize(e: CustomEvent<{ items: Item[] }>) {
     items = e.detail.items;
-    if (e.detail.info.source === SOURCES.POINTER) dragDisabled = true;
     await reorderItems(checklistId, items.map((i) => i.id));
   }
 </script>
@@ -91,7 +82,7 @@
     />
 
     <ul
-      use:dndzone={{ items, dragDisabled, flipDurationMs, dropTargetStyle: {} }}
+      use:dragHandleZone={{ items, flipDurationMs, dropTargetStyle: {} }}
       on:consider={handleConsider}
       on:finalize={handleFinalize}
     >
@@ -101,8 +92,7 @@
             type="button"
             class="handle"
             aria-label="Reorder"
-            on:mousedown={startDrag}
-            on:touchstart={startDrag}
+            use:dragHandle
           >≡</button>
           <span class="num">{i + 1}.</span>
           <button class="row" on:click={() => navigate({ name: 'editItem', checklistId, itemId: it.id })}>
